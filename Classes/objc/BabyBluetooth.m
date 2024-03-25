@@ -18,6 +18,8 @@
     BabySpeaker *babySpeaker;
     int CENTRAL_MANAGER_INIT_WAIT_TIMES;
     NSTimer *timerForStop;
+    
+    CBPeripheral *connectingPeripheral;// 2023.10.12添加正在连接设备
 }
 //单例模式
 + (instancetype)shareBabyBluetooth {
@@ -39,6 +41,8 @@
         
         babyPeripheralManager = [[BabyPeripheralManager alloc]init];
         babyPeripheralManager->babySpeaker = babySpeaker;
+        
+        self.mBabySpeaker = babySpeaker;
     }
     return self;
     
@@ -145,6 +149,7 @@
 //连接Peripherals成功的委托
 - (void)setBlockOnConnectedAtChannel:(NSString *)channel
                               block:(void (^)(CBCentralManager *central,CBPeripheral *peripheral))block {
+    
     [[babySpeaker callbackOnChnnel:channel createWhenNotExist:YES] setBlockOnConnectedPeripheral:block];
 }
 
@@ -391,6 +396,7 @@
         //直接连接
         else {
             if (cachedPeripheral) {
+                connectingPeripheral = cachedPeripheral;
                 [babyCentralManager connectToPeripheral:cachedPeripheral];
             }
         }
@@ -429,11 +435,23 @@
 - (void)babyStop {
     BabyLog(@">>>did stop");
     [timerForStop invalidate];
+    
+    // 2023.10.12添加，超时后若仍处于正在连接状态则停止连接，回调连接失败
+    if (babyCentralManager->needConnectPeripheral) {
+        if (connectingPeripheral.state == CBPeripheralStateConnecting) {
+            [self cancelPeripheralConnection:connectingPeripheral];
+            if ([[babySpeaker callbackOnCurrChannel] blockOnFailToConnect]) {
+                [[babySpeaker callbackOnCurrChannel] blockOnFailToConnect](babyCentralManager,connectingPeripheral,nil);
+            }
+        }
+    }
     [self resetSeriseParmeter];
     babyCentralManager->pocket = [[NSMutableDictionary alloc]init];
-    //停止扫描，断开连接
+    //停止扫描
     [babyCentralManager cancelScan];
-    [babyCentralManager cancelAllPeripheralsConnection];
+    // 2023.10.08停止扫描不断开链接
+//    [babyCentralManager cancelAllPeripheralsConnection];
+    
 }
 
 //重置串行方法参数
@@ -655,9 +673,6 @@ characteristic:(CBCharacteristic *)characteristic
 }
 - (void)peripheralModelBlockOnDidReceiveWriteRequests:(void(^)(CBPeripheralManager *peripheral,NSArray *requests))block {
     [[babySpeaker callback]setBlockOnPeripheralModelDidReceiveWriteRequests:block];
-}
-- (void)peripheralModelBlockOnIsReadyToUpdateSubscribers:(void(^)(CBPeripheralManager *peripheral))block {
-    [[babySpeaker callback]setBlockOnPeripheralModelIsReadyToUpdateSubscribers:block];
 }
 - (void)peripheralModelBlockOnDidSubscribeToCharacteristic:(void(^)(CBPeripheralManager *peripheral,CBCentral *central,CBCharacteristic *characteristic))block {
     [[babySpeaker callback]setBlockOnPeripheralModelDidSubscribeToCharacteristic:block];

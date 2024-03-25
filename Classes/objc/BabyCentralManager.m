@@ -25,7 +25,7 @@
 #if  __IPHONE_OS_VERSION_MIN_REQUIRED > __IPHONE_6_0
         NSDictionary *options = [NSDictionary dictionaryWithObjectsAndKeys:
                                  //蓝牙power没打开时alert提示框
-                                 [NSNumber numberWithBool:YES],CBCentralManagerOptionShowPowerAlertKey,
+                                 [NSNumber numberWithBool:NO],CBCentralManagerOptionShowPowerAlertKey,
                                  //重设centralManager恢复的IdentifierKey
                                  @"babyBluetoothRestore",CBCentralManagerOptionRestoreIdentifierKey,
                                  nil];
@@ -154,7 +154,7 @@
         if ([currChannel filterOnconnectToPeripherals](peripheral.name,advertisementData,RSSI)) {
             [centralManager connectPeripheral:peripheral options:[currChannel babyOptions].connectPeripheralWithOptions];
             //开一个定时器监控连接超时的情况
-            connectTimer = [NSTimer scheduledTimerWithTimeInterval:5.0f target:self selector:@selector(disconnect:) userInfo:peripheral repeats:NO];
+//            connectTimer = [NSTimer scheduledTimerWithTimeInterval:5.0f target:self selector:@selector(disconnect:) userInfo:peripheral repeats:NO];
         }
     }
 }
@@ -407,7 +407,7 @@
 }
 #else
 - (void)peripheral:(CBPeripheral *)peripheral didReadRSSI:(NSNumber *)RSSI error:(NSError *)error {
-    [[NSNotificationCenter defaultCenter]postNotificationName:BabyNotificationAtDidReadRSSI object:@{@"peripheral":peripheral,@"RSSI":RSSI?RSSI:@100,@"error":error?error:@""}];
+    [[NSNotificationCenter defaultCenter]postNotificationName:BabyNotificationAtDidReadRSSI object:@{@"peripheral":peripheral,@"RSSI":RSSI,@"error":error?error:@""}];
     
     BabyLog(@">>>peripheralDidUpdateRSSI -> RSSI:%@",RSSI);
     if ([currChannel blockOnDidReadRSSI]) {
